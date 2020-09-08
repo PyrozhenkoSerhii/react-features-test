@@ -11,7 +11,7 @@ export const downloadFile = (data: Blob, name: string): void => {
 };
 
 export const saveByteArray = (data: BlobPart[], name: string): void => {
-  const blob = new Blob(data, { type: "octet/stream" });
+  const blob = new Blob(data, { type: "application/octet-stream" });
   downloadFile(blob, name);
 };
 
