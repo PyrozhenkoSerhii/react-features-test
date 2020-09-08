@@ -49,6 +49,13 @@
       "ImportDeclaration": { "multiline": true, "minProperties": 6 }
     }],
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
-    "no-plusplus": "off"
+    "no-plusplus": "off",
+    "no-restricted-syntax": "off",
+    "no-prototype-builtins": "off",
+    "class-methods-use-this": "off",
+    "no-throw-literal": "off",
+    "no-shadow": "off",
+    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/no-this-alias": "off"
   }
 }

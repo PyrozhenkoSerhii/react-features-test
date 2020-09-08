@@ -6,5 +6,5 @@ export enum ACTION {
     LEAVE_ROOM="leaveRoom",
     ROOM_PARTICIPANTS="roomParticipants"
 }
-export const SOCKET_ACTIONS=Object.values(ACTION);
-export enum ERROR {UNKNOWN,INVALID_SOCKET_ID}
+export const SOCKET_ACTIONS = Object.values(ACTION);
+export enum ERROR {UNKNOWN, INVALID_SOCKET_ID}

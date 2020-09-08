@@ -10,9 +10,6 @@
     "experimentalDecorators": true,
     "noImplicitAny": false,
     "types": ["node", "./src/@types"],
-    "lib": [
-      "es2017"
-    ]
   },
   "include": [
     "./**/*.ts",

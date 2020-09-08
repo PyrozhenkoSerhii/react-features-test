@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as express from "express";
 
 import { createServer } from "https";
-import {SocketServer} from './utils/socket-server';
+import { SocketServer } from "./utils/socket-server";
 
 dotenv.config();
 
