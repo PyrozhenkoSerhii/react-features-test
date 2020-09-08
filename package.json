@@ -3,7 +3,9 @@
   "scripts": {
     "dev": "tsc --lib es6 ./webpack/webpack.config.dev.ts && webpack-dev-server --config ./webpack/webpack.config.dev.js",
     "build": "tsc --lib es6 ./webpack/webpack.config.prod.ts && webpack --config ./webpack/webpack.config.prod.js",
-    "lint": "eslint --ext .tsx,.ts ."
+    "lint": "eslint --ext .tsx,.ts .",
+    "server-dev": "ts-node ./server.ts",
+    "server-prod": "ts-node ./server.ts  >/tmp/app.log 2>&1 &"
   },
   "dependencies": {
     "@ant-design/icons": "^4.2.2",
@@ -11,6 +13,8 @@
     "antd": "^4.6.1",
     "concatenateblobs": "^1.0.2",
     "date-fns": "^2.16.1",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
     "less": "^3.12.2",
     "lodash": "^4.17.20",
     "mobx": "^5.15.6",
@@ -21,7 +25,8 @@
     "react-dom": "^16.13.1",
     "react-router-dom": "^5.2.0",
     "recordrtc": "^5.6.1",
-    "styled-components": "^5.1.1"
+    "styled-components": "^5.1.1",
+    "ts-node": "^9.0.0"
   },
   "devDependencies": {
     "@types/dotenv-webpack": "^1.8.0",
