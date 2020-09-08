@@ -5,10 +5,7 @@ import * as React from "react";
 import * as RecordRTCPromisesHandler from "recordrtc";
 
 import { Wrapper } from "./styled";
-import { downloadFile, getFileName, saveByteArray } from "./utils";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { mergeLeftRightBuffers } = require("../merge");
+import { getFileName, saveByteArray } from "./utils";
 
 const { useEffect, useState, useRef } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
@@ -38,38 +35,15 @@ export const App = (): JSX.Element => {
         recorderType: StereoAudioRecorder,
         timeSlice: 5000,
         ondataavailable: () => {
-          counter += 1;
           const internalRecorder = recorder.getInternalRecorder();
+          const { leftchannel } = internalRecorder;
 
-          const { leftchannel, rightchannel } = internalRecorder;
+          const readItems = read ? leftchannel.slice(read) : leftchannel;
 
-          const readItemsLeft = read ? leftchannel.slice(read) : leftchannel;
-          // const readItemsRight = read ? rightchannel.slice(read) : rightchannel;
-
-          const readItemsCount = Object.keys(readItemsLeft).length;
-
+          const readItemsCount = Object.keys(readItems).length;
           read += readItemsCount;
 
-          // mergeLeftRightBuffers({
-          //   desiredSampRate: internalRecorder.desiredSampRate,
-          //   sampleRate: internalRecorder.sampleRate,
-          //   numberOfAudioChannels: internalRecorder.numberOfAudioChannels,
-          //   internalInterleavedLength: internalRecorder.recordingLength,
-          //   leftBuffers: readItemsLeft,
-          //   rightBuffers: internalRecorder.numberOfAudioChannels === 1 ? [] : readItemsRight,
-          // }, (buffer: ArrayBuffer) => {
-          //   const blob = new Blob([buffer], { type: "audio/wav" });
-          //   audioRef.current.srcObject = null;
-          //   audioRef.current.src = URL.createObjectURL(blob);
-
-          //   downloadFile(blob, getFileName(counter));
-          //   saveByteArray([buffer], "test.bin");
-          // });
-
-          saveByteArray(readItemsLeft, getFileName(counter));
-          console.log(`Read in total: ${read} items`);
-          console.log("Read items: ", readItemsLeft);
-          console.log("Whole recording buffer: ", leftchannel);
+          saveByteArray(readItems, getFileName(++counter));
         },
       });
       recorder.startRecording();

@@ -48,6 +48,7 @@
     "object-curly-newline": ["error", {
       "ImportDeclaration": { "multiline": true, "minProperties": 6 }
     }],
-    "import/no-extraneous-dependencies": ["error", { "devDependencies": true }]
+    "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
+    "no-plusplus": "off"
   }
 }
