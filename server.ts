@@ -1,8 +1,10 @@
+/* eslint-disable no-new */
 import * as dotenv from "dotenv";
 
 import * as path from "path";
 import * as fs from "fs";
 import * as express from "express";
+import { createServer as createHttpServer } from "http";
 
 import { createServer } from "https";
 import { SocketServer } from "./utils/socket-server";
@@ -40,6 +42,9 @@ if (ENV === "production") {
     console.log(`> HTTPS Server running on port ${PORT}`);
   });
 } else {
+  const server = createHttpServer(app);
+  new SocketServer(server);
+
   app.listen(Number(PORT), HOST, () => {
     console.log("listening");
   });

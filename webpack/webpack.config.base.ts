@@ -4,6 +4,9 @@ import * as HtmlWebpackPlugin from "html-webpack-plugin";
 
 const config: WebpackConfiguration = {
   target: "web",
+  node: {
+    fs: "empty",
+  },
   resolve: {
     extensions: [".tsx", ".ts", ".jsx", ".js", ".json"],
   },

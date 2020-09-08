@@ -13,6 +13,7 @@ const devConfiguration: Configuration = {
   output: {
     path: path.resolve(__dirname, "./public"),
     filename: "[name].js",
+    publicPath: "/",
   },
   devtool: "source-map",
   devServer: {
