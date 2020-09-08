@@ -5,6 +5,7 @@ import * as fs from "fs";
 import * as express from "express";
 
 import { createServer } from "https";
+import {SocketServer} from './utils/socket-server';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ if (ENV === "production") {
   };
 
   const httpsServer = createServer(credentials, app);
+  new SocketServer(httpsServer);
 
   httpsServer.listen(PORT, () => {
     console.log(`> HTTPS Server running on port ${PORT}`);
