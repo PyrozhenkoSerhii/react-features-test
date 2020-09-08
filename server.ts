@@ -1,12 +1,14 @@
 import * as dotenv from "dotenv";
 
 import * as path from "path";
+import * as fs from "fs";
 import * as express from "express";
+
+import { createServer } from "https";
 
 dotenv.config();
 
-const { HOST, PORT } = process.env;
-console.log(PORT);
+const { HOST, PORT, ENV } = process.env;
 
 const app = express();
 
@@ -19,6 +21,24 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, clientDistFolder, "index.html"));
 });
 
-app.listen(Number(PORT), HOST, () => {
-  console.log("listening");
-});
+if (ENV === "production") {
+  const privateKey = fs.readFileSync("/etc/letsencrypt/live/app.avcore.io/privkey.pem", "utf8");
+  const certificate = fs.readFileSync("/etc/letsencrypt/live/app.avcore.io/cert.pem", "utf8");
+  const ca = fs.readFileSync("/etc/letsencrypt/live/app.avcore.io/chain.pem", "utf8");
+
+  const credentials = {
+    key: privateKey,
+    cert: certificate,
+    ca,
+  };
+
+  const httpsServer = createServer(credentials, app);
+
+  httpsServer.listen(PORT, () => {
+    console.log(`> HTTPS Server running on port ${PORT}`);
+  });
+} else {
+  app.listen(Number(PORT), HOST, () => {
+    console.log("listening");
+  });
+}
