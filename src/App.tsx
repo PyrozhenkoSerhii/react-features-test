@@ -5,7 +5,7 @@ import * as React from "react";
 import * as RecordRTCPromisesHandler from "recordrtc";
 
 import { Wrapper } from "./styled";
-import { downloadFile } from "./utils";
+import { downloadFile, getFileName } from "./utils";
 
 const { useEffect, useState, useRef } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
@@ -35,7 +35,7 @@ export const App = (): JSX.Element => {
         timeSlice: 5000,
         ondataavailable: async (newBlob: Blob) => {
           counter += 1;
-          downloadFile(newBlob, counter.toString());
+          downloadFile(newBlob, getFileName(counter));
         },
       });
       recorder.startRecording();

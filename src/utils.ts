@@ -14,3 +14,5 @@ export const saveByteArray = (data: BlobPart[], name: string): void => {
   const blob = new Blob(data, { type: "octet/stream" });
   downloadFile(blob, name);
 };
+
+export const getFileName = (counter: number): string => `00${counter}`.slice(-3);
