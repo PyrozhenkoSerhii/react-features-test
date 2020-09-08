@@ -1,12 +1,16 @@
-export const saveByteArray = (data: BlobPart[], name: string): void => {
+export const downloadFile = (data: Blob, name: string): void => {
   const a = document.createElement("a");
   document.body.appendChild(a);
   a.style.display = "none";
 
-  const blob = new Blob(data, { type: "octet/stream" });
-  const url = window.URL.createObjectURL(blob);
+  const url = window.URL.createObjectURL(data);
   a.href = url;
   a.download = name;
   a.click();
   window.URL.revokeObjectURL(url);
+};
+
+export const saveByteArray = (data: BlobPart[], name: string): void => {
+  const blob = new Blob(data, { type: "octet/stream" });
+  downloadFile(blob, name);
 };
