@@ -73,13 +73,17 @@ export const App = (): JSX.Element => {
       const socket = SocketIO("https://app.avcore.io:443");
       const roomInput: RoomInput = { roomId: id };
 
+      console.log(`> Socket for ${type} with id ${id} created`);
+
       socket.on("connect", async () => {
         socket.emit(ACTION.JOIN_ROOM, roomInput);
+        console.log(`> Socket for ${type} with id ${id} connected`);
 
         if (type === "sender") {
           const connections: IPeers = {};
 
           socket.emit(ACTION.ROOM_PARTICIPANTS, roomInput, ({ participants }: RoomParticipants) => {
+            console.log("> Searching for room participants");
             participants.forEach(({ socketId }) => {
               if (connections[socketId] || socketId === socket.id) return;
               console.log(`Found ${socketId} in the room. Creating peer connection and datachannel`);
@@ -110,18 +114,28 @@ export const App = (): JSX.Element => {
           });
 
           socket.on(ACTION.SDP, ({ sdp, socketId }: SocketStreamSdpData) => {
+            console.log(`> [Sender] sdp action: for socket: ${socketId}: `, sdp);
+
             if (sdp.type === "answer") {
               connections[socketId].setRemoteDescription(sdp);
             }
           });
 
           socket.on(ACTION.ICE, async ({ socketId, ice }: SocketStreamIceData) => {
+            console.log(`> [Sender] ice action: for socket: ${socketId}: `, ice);
+
+            if (!connections[socketId]) {
+              console.log(`> [Sender] There is no connection to set ice to (socket: ${socketId})`);
+              return;
+            }
             connections[socketId].addIceCandidate(new RTCIceCandidate(ice));
           });
         } else if (type === "receiver") {
           let connection: RTCPeerConnection = null;
 
           socket.on(ACTION.SDP, (data: SocketStreamSdpData) => {
+            console.log(`> [Reciever] sdp action: for socket: ${data.socketId}: `, data.sdp);
+
             if (data.sdp.type !== "offer") return;
 
             const peerConnection = new RTCPeerConnection(peerConfig);
@@ -138,6 +152,8 @@ export const App = (): JSX.Element => {
               });
 
             peerConnection.ondatachannel = (event) => {
+              console.log("> [Receiver] peer's ondatachannel:", event);
+
               const receiveChannel = event.channel;
               receiveChannel.binaryType = "arraybuffer";
 
@@ -161,6 +177,8 @@ export const App = (): JSX.Element => {
             };
 
             peerConnection.onicecandidate = ({ candidate }) => {
+              console.log("> [Receiver] peer's onicecandidate:", candidate);
+
               if (candidate) {
                 const iceData: SocketStreamIceData = {
                   ice: candidate,
@@ -174,6 +192,8 @@ export const App = (): JSX.Element => {
           });
 
           socket.on(ACTION.ICE, async ({ ice }: SocketStreamIceData) => {
+            console.log("> [Receiver] ice action:", ice);
+
             if (connection) {
               connection.addIceCandidate(new RTCIceCandidate(ice))
                 .catch((err) => console.error(err));

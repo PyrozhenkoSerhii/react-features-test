@@ -16,7 +16,7 @@ export const peerConfig = {
       credential: "testPassword",
     },
   ],
-  iceCandidatePoolSize: 2,
+  iceCandidatePoolSize: 50,
 };
 
 export const createDataChannel = (
