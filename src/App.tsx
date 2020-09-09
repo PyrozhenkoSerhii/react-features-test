@@ -179,8 +179,9 @@ export const App = (): JSX.Element => {
 
                 if (audioQueue) {
                   audioQueue = float32Concat(audioQueue, buffer);
-                  if (audioQueue > JITTER_BUFFER_SIZE) {
-                    audioQueue.subarray(audioQueue.length - JITTER_BUFFER_SIZE, audioQueue.length);
+                  if (audioQueue.length > JITTER_BUFFER_SIZE) {
+                    audioQueue = audioQueue
+                      .subarray(audioQueue.length - JITTER_BUFFER_SIZE, audioQueue.length);
                   }
                 } else {
                   audioQueue = buffer;
