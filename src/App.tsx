@@ -1,3 +1,4 @@
+/* eslint-disable prefer-destructuring */
 import * as React from "react";
 import { useLocation } from "react-router-dom";
 import * as SocketIO from "socket.io-client";
@@ -8,13 +9,32 @@ import { Wrapper } from "./styled";
 import { getFileName, saveByteArray } from "./utils";
 
 import { ACTION } from "../utils/constants";
-import { RoomInput, RoomParticipants, SocketStreamSdpData, SocketStreamIceData } from "../utils/interfaces";
+import { RoomInput, RoomParticipants, SocketStreamSdpData, SocketStreamIceData, SocketData } from "../utils/interfaces";
 
 const { useEffect, useState, useRef } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
+let read = 0;
+interface IDataChannelList {
+  [id: string]: RTCDataChannel;
+}
+const dataChannelList: IDataChannelList = {};
 
-const counter = 0;
-const read = 0;
+const config = {
+  sdpSemantics: "unified-plan",
+  iceServers: [
+    {
+      urls: ["turn:18.196.113.204:3478"],
+      username: "testUser",
+      credential: "testPassword",
+    },
+    {
+      urls: ["stun:18.196.113.204:3478"],
+      username: "testUser",
+      credential: "testPassword",
+    },
+  ],
+  iceCandidatePoolSize: 2,
+};
 
 interface Peers {
   [id: string]: RTCPeerConnection;
@@ -38,31 +58,36 @@ export const App = (): JSX.Element => {
     getAudioStream();
   }, []);
 
-  // useEffect(() => {
-  //   if (stream) {
-  //     const recorder = new RecordRTCPromisesHandler(stream, {
-  //       type: "audio/wav",
-  //       recorderType: StereoAudioRecorder,
-  //       timeSlice: 5000,
-  //       ondataavailable: () => {
-  //         const internalRecorder = recorder.getInternalRecorder();
-  //         const { leftchannel } = internalRecorder;
+  useEffect(() => {
+    if (stream && type === "sender") {
+      const recorder = new RecordRTCPromisesHandler(stream, {
+        type: "audio/wav",
+        recorderType: StereoAudioRecorder,
+        timeSlice: 50,
+        ondataavailable: () => {
+          const internalRecorder = recorder.getInternalRecorder();
+          const { leftchannel } = internalRecorder;
 
-  //         const readItems = read ? leftchannel.slice(read) : leftchannel;
+          const readItems = read ? leftchannel.slice(read) : leftchannel;
+          const readItemsCount = Object.keys(readItems).length;
+          read += readItemsCount;
 
-  //         const readItemsCount = Object.keys(readItems).length;
-  //         read += readItemsCount;
-
-  //         saveByteArray(readItems, getFileName(++counter));
-  //       },
-  //     });
-  //     recorder.startRecording();
-  //     audioRef.current.srcObject = stream;
-  //   }
-  // }, [stream]);
+          dataChannelList.forEach((channel) => {
+            readItems.forEach((item) => {
+              if (channel.readyState === "open") {
+                channel.send(item);
+              }
+            });
+          });
+        },
+      });
+      recorder.startRecording();
+      audioRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   useEffect(() => {
-    if (stream && type && id) {
+    if (stream && type && id && !dataChannelList.length) {
       const socket = SocketIO("https://app.avcore.io:443");
       const roomInput: RoomInput = { roomId: id };
       const connections: Peers = {};
@@ -72,44 +97,79 @@ export const App = (): JSX.Element => {
 
         if (type === "sender") {
           socket.emit(ACTION.ROOM_PARTICIPANTS, roomInput, (data: RoomParticipants) => {
-            data.participants.forEach((participant) => {
-              const peerConnection = new RTCPeerConnection();
-              const sendChannel = peerConnection.createDataChannel("sendChannel");
-              sendChannel.onopen = () => {
-                console.log("opened");
-                setTimeout(() => {
-                  sendChannel.send("message");
-                }, 1000);
-              };
-              sendChannel.onclose = () => { console.log("closed"); };
-              connections[participant.socketId] = peerConnection;
+            // data.participants.forEach((participant) => {
+            //   if (connections[participant.socketId]) {
+            //     console.log("connection is already created");
+            //     return;
+            //   }
 
-              peerConnection.onicecandidate = (event) => {
-                console.log("sender's peer connection on icecandidate:", event);
-                if (event.candidate) {
-                  const iceData: SocketStreamIceData = {
-                    ice: event.candidate,
-                    socketId: participant.socketId,
-                  };
-                  socket.emit(ACTION.ICE, iceData);
-                }
-              };
+            //   const peerConnection = new RTCPeerConnection(config);
+            //   const sendChannel = peerConnection.createDataChannel("sendChannel");
+            //   sendChannel.binaryType = "arraybuffer";
+            //   sendChannel.onopen = () => {
+            //     console.log(sendChannel.readyState);
+            //     dataChannelList.push(sendChannel);
+            //   };
+            //   sendChannel.onclose = () => { console.log("closed"); };
+            //   connections[participant.socketId] = peerConnection;
 
-              peerConnection
-                .createOffer()
-                .then((sdp) => peerConnection.setLocalDescription(sdp))
-                .then(() => {
-                  const sdpData: SocketStreamSdpData = {
-                    sdp: peerConnection.localDescription,
-                    socketId: participant.socketId,
-                  };
-                  socket.emit(ACTION.SDP, sdpData);
-                });
-            });
+            //   peerConnection.onicecandidate = (event) => {
+            //     console.log("sender's peer connection on icecandidate:", event);
+            //     if (event.candidate) {
+            //       const iceData: SocketStreamIceData = {
+            //         ice: event.candidate,
+            //         socketId: participant.socketId,
+            //       };
+            //       socket.emit(ACTION.ICE, iceData);
+            //     }
+            //   };
+
+            //   peerConnection
+            //     .createOffer()
+            //     .then((sdp) => peerConnection.setLocalDescription(sdp))
+            //     .then(() => {
+            //       const sdpData: SocketStreamSdpData = {
+            //         sdp: peerConnection.localDescription,
+            //         socketId: participant.socketId,
+            //       };
+            //       socket.emit(ACTION.SDP, sdpData);
+            //     });
+            // });
           });
 
-          socket.on(ACTION.JOIN_ROOM, (data) => {
-            console.log("join", data);
+          socket.on(ACTION.JOIN_ROOM, ({ socketId }: SocketData) => {
+            if (connections[socketId]) return;
+
+            const peerConnection = new RTCPeerConnection(config);
+            const sendChannel = peerConnection.createDataChannel("arraybufferchannel");
+            sendChannel.onopen = () => {
+              console.log(`Data channel with ${socketId} has been opened`);
+              dataChannelList[socketId] = sendChannel;
+            };
+            sendChannel.onclose = () => {
+              console.log(`Data channel with ${socketId} has been closed. Removing the datachannel from available list`);
+              delete dataChannelList[socketId];
+            };
+
+            peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                const iceData: SocketStreamIceData = { ice: event.candidate, socketId };
+                socket.emit(ACTION.ICE, iceData);
+              }
+            };
+
+            peerConnection
+              .createOffer()
+              .then((sdp) => peerConnection.setLocalDescription(sdp))
+              .then(() => {
+                const sdpData: SocketStreamSdpData = {
+                  sdp: peerConnection.localDescription,
+                  socketId,
+                };
+                socket.emit(ACTION.SDP, sdpData);
+              });
+
+            connections[socketId] = peerConnection;
           });
 
           socket.on(ACTION.LEAVE_ROOM, (data) => {
@@ -123,18 +183,15 @@ export const App = (): JSX.Element => {
               console.log(connections[data.socketId].iceConnectionState);
             }
           });
-          socket.on(ACTION.ICE, (data: SocketStreamIceData) => {
-            console.log("sender on ice:", data);
+          socket.on(ACTION.ICE, async (data: SocketStreamIceData) => {
             const connection = connections[data.socketId];
-            // if (connection.iceConnectionState === "new") {
-            // return;
-            // }
+            console.log(connection.iceConnectionState);
             connection.addIceCandidate(new RTCIceCandidate(data.ice));
           });
         } else if (type === "receiver") {
           socket.on(ACTION.SDP, (data: SocketStreamSdpData) => {
             console.log("receiver on sdp offer:", data);
-            const peerConnection = new RTCPeerConnection();
+            const peerConnection = new RTCPeerConnection(config);
             peerConnection
               .setRemoteDescription(data.sdp)
               .then(() => peerConnection.createAnswer())
@@ -148,18 +205,25 @@ export const App = (): JSX.Element => {
               });
 
             peerConnection.ondatachannel = (event) => {
-              console.log("ondatachannel");
               const receiveChannel = event.channel;
-              receiveChannel.onmessage = (e) => { console.log(e); };
+              receiveChannel.binaryType = "arraybuffer";
+              let acceptedData = [];
+              let fileNumber = 0;
+              receiveChannel.onmessage = (event) => {
+                acceptedData.push(new Float32Array(event.data));
+                if (acceptedData.length === 100) {
+                  console.log(acceptedData);
+                  saveByteArray(acceptedData, getFileName(++fileNumber));
+                  acceptedData = [];
+                }
+              };
               receiveChannel.onopen = () => { console.log("on open"); };
-              receiveChannel.onclose = () => { console.log("on status change"); };
+              receiveChannel.onclose = () => { console.log("on close"); };
             };
-            // peerConnection.ontrack = (event) => {
-            //   console.log("ontrack:", event.streams[0]);
-            // };
 
             peerConnection.onicecandidate = (event) => {
-              console.log("receiver's peer connection on icecandidate:", event);
+              console.log(peerConnection.iceConnectionState);
+
               if (event.candidate) {
                 const iceData: SocketStreamIceData = {
                   ice: event.candidate,
