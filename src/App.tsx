@@ -20,8 +20,10 @@ const context = new AudioContext();
 const BUFFER_SIZE = 4096;
 
 let audioQueue;
+let isPlaying = false;
 const output = context.createScriptProcessor(BUFFER_SIZE, 1, 1);
 output.onaudioprocess = (e) => {
+  isPlaying = true;
   if (audioQueue && audioQueue.length) {
     const samplesToPlay = audioQueue.subarray(0, BUFFER_SIZE);
     audioQueue = audioQueue.subarray(BUFFER_SIZE, audioQueue.length);
@@ -29,6 +31,8 @@ output.onaudioprocess = (e) => {
   } else {
     e.outputBuffer.getChannelData(0).set(new Float32Array(BUFFER_SIZE));
   }
+
+  console.log("[onaudioprocess] Queue length: ", audioQueue.length);
 };
 output.connect(context.destination);
 
@@ -171,7 +175,7 @@ export const App = (): JSX.Element => {
               receiveChannel.onmessage = (event) => {
                 const buffer = new Float32Array(event.data);
 
-                if (audioQueue) {
+                if (audioQueue && isPlaying) {
                   audioQueue = float32Concat(audioQueue, buffer);
                 } else {
                   audioQueue = buffer;
@@ -217,6 +221,8 @@ export const App = (): JSX.Element => {
   const [playbackActive, setPlaybackActive] = useState(false);
   const togglePlayback = () => {
     if (playbackActive) {
+      isPlaying = false;
+      console.log("isPlaying false");
       context.suspend();
     } else {
       context.resume();
