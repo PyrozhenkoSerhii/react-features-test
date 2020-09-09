@@ -6,12 +6,12 @@ export const peerConfig = {
   sdpSemantics: "unified-plan",
   iceServers: [
     {
-      urls: ["turn:18.196.113.204:3478"],
+      urls: ["turn:62.210.189.244:3478"],
       username: "testUser",
       credential: "testPassword",
     },
     {
-      urls: ["stun:18.196.113.204:3478"],
+      urls: ["stun:62.210.189.244:3478"],
       username: "testUser",
       credential: "testPassword",
     },
