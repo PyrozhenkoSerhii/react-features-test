@@ -17,16 +17,17 @@ const { useEffect, useState } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
 const context = new AudioContext();
 
+const BUFFER_SIZE = 4096;
+
 let audioQueue;
-const output = context.createScriptProcessor(4096, 1, 1);
+const output = context.createScriptProcessor(BUFFER_SIZE, 1, 1);
 output.onaudioprocess = (e) => {
   if (audioQueue && audioQueue.length) {
-    const samplesToPlay = audioQueue.subarray(0, 4096);
-    audioQueue = audioQueue.subarray(4096, audioQueue.length);
-    console.log(samplesToPlay);
+    const samplesToPlay = audioQueue.subarray(0, BUFFER_SIZE);
+    audioQueue = audioQueue.subarray(BUFFER_SIZE, audioQueue.length);
     e.outputBuffer.getChannelData(0).set(samplesToPlay);
   } else {
-    e.outputBuffer.getChannelData(0).set(new Float32Array(4096));
+    e.outputBuffer.getChannelData(0).set(new Float32Array(BUFFER_SIZE));
   }
 };
 output.connect(context.destination);
