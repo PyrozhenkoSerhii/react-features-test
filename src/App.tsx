@@ -1,3 +1,4 @@
+/* eslint-disable no-lonely-if */
 import * as React from "react";
 import { useLocation } from "react-router-dom";
 import { Button } from "antd";
@@ -24,16 +25,15 @@ let audioQueue;
 let isPlaying = false;
 const output = context.createScriptProcessor(BUFFER_SIZE, 1, 1);
 output.onaudioprocess = (e) => {
-  if (audioQueue && (isPlaying || audioQueue.length >= JITTER_BUFFER_SIZE)) {
+  isPlaying = true;
+
+  if (audioQueue && audioQueue.length) {
     const samplesToPlay = audioQueue.subarray(0, BUFFER_SIZE);
     audioQueue = audioQueue.subarray(BUFFER_SIZE, audioQueue.length);
     e.outputBuffer.getChannelData(0).set(samplesToPlay);
     console.log("[onaudioprocess] Queue length: ", audioQueue.length);
   } else {
     e.outputBuffer.getChannelData(0).set(new Float32Array(BUFFER_SIZE));
-  }
-  if (!isPlaying) {
-    isPlaying = true;
   }
 };
 output.connect(context.destination);
@@ -177,14 +177,22 @@ export const App = (): JSX.Element => {
               receiveChannel.onmessage = (event) => {
                 const buffer = new Float32Array(event.data);
 
-                if (audioQueue) {
+                if (audioQueue && isPlaying) {
                   audioQueue = float32Concat(audioQueue, buffer);
-                  if (audioQueue.length > JITTER_BUFFER_SIZE) {
-                    audioQueue = audioQueue
-                      .subarray(audioQueue.length - JITTER_BUFFER_SIZE, audioQueue.length);
+                } else if (isPlaying) {
+                  if (buffer.length < JITTER_BUFFER_SIZE) {
+                    const result = new Float32Array(JITTER_BUFFER_SIZE);
+                    const zerosLength = JITTER_BUFFER_SIZE - buffer.length;
+
+                    const zeroArray = new Float32Array(zerosLength);
+
+                    result.set(zeroArray);
+                    result.set(buffer, zerosLength);
+
+                    audioQueue = result;
+                  } else {
+                    audioQueue = buffer;
                   }
-                } else {
-                  audioQueue = buffer;
                 }
               };
 
