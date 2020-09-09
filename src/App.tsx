@@ -18,21 +18,23 @@ const { StereoAudioRecorder } = RecordRTCPromisesHandler;
 const context = new AudioContext();
 
 const BUFFER_SIZE = 4096;
+const JITTER_BUFFER_SIZE = 20480;
 
 let audioQueue;
 let isPlaying = false;
 const output = context.createScriptProcessor(BUFFER_SIZE, 1, 1);
 output.onaudioprocess = (e) => {
-  isPlaying = true;
-  if (audioQueue && audioQueue.length) {
+  if (audioQueue && (isPlaying || audioQueue.length >= JITTER_BUFFER_SIZE)) {
     const samplesToPlay = audioQueue.subarray(0, BUFFER_SIZE);
     audioQueue = audioQueue.subarray(BUFFER_SIZE, audioQueue.length);
     e.outputBuffer.getChannelData(0).set(samplesToPlay);
+    console.log("[onaudioprocess] Queue length: ", audioQueue.length);
   } else {
     e.outputBuffer.getChannelData(0).set(new Float32Array(BUFFER_SIZE));
   }
-
-  console.log("[onaudioprocess] Queue length: ", audioQueue.length);
+  if (!isPlaying) {
+    isPlaying = true;
+  }
 };
 output.connect(context.destination);
 
@@ -175,8 +177,11 @@ export const App = (): JSX.Element => {
               receiveChannel.onmessage = (event) => {
                 const buffer = new Float32Array(event.data);
 
-                if (audioQueue && isPlaying) {
+                if (audioQueue) {
                   audioQueue = float32Concat(audioQueue, buffer);
+                  if (audioQueue > JITTER_BUFFER_SIZE) {
+                    audioQueue.subarray(audioQueue.length - JITTER_BUFFER_SIZE, audioQueue.length);
+                  }
                 } else {
                   audioQueue = buffer;
                 }
