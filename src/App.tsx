@@ -13,8 +13,12 @@ import { RoomInput, RoomParticipants, SocketStreamSdpData, SocketStreamIceData }
 const { useEffect, useState, useRef } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
 
-let counter = 0;
-let read = 0;
+const counter = 0;
+const read = 0;
+
+interface Peers {
+  [id: string]: RTCPeerConnection;
+}
 
 export const App = (): JSX.Element => {
   const [stream, setStream] = useState<MediaStream>(null);
@@ -34,34 +38,34 @@ export const App = (): JSX.Element => {
     getAudioStream();
   }, []);
 
+  // useEffect(() => {
+  //   if (stream) {
+  //     const recorder = new RecordRTCPromisesHandler(stream, {
+  //       type: "audio/wav",
+  //       recorderType: StereoAudioRecorder,
+  //       timeSlice: 5000,
+  //       ondataavailable: () => {
+  //         const internalRecorder = recorder.getInternalRecorder();
+  //         const { leftchannel } = internalRecorder;
+
+  //         const readItems = read ? leftchannel.slice(read) : leftchannel;
+
+  //         const readItemsCount = Object.keys(readItems).length;
+  //         read += readItemsCount;
+
+  //         saveByteArray(readItems, getFileName(++counter));
+  //       },
+  //     });
+  //     recorder.startRecording();
+  //     audioRef.current.srcObject = stream;
+  //   }
+  // }, [stream]);
+
   useEffect(() => {
-    if (stream) {
-      const recorder = new RecordRTCPromisesHandler(stream, {
-        type: "audio/wav",
-        recorderType: StereoAudioRecorder,
-        timeSlice: 5000,
-        ondataavailable: () => {
-          const internalRecorder = recorder.getInternalRecorder();
-          const { leftchannel } = internalRecorder;
-
-          const readItems = read ? leftchannel.slice(read) : leftchannel;
-
-          const readItemsCount = Object.keys(readItems).length;
-          read += readItemsCount;
-
-          saveByteArray(readItems, getFileName(++counter));
-        },
-      });
-      recorder.startRecording();
-      audioRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  useEffect(() => {
-    if (type && id) {
+    if (stream && type && id) {
       const socket = SocketIO("https://app.avcore.io:443");
       const roomInput: RoomInput = { roomId: id };
-      const connections = [];
+      const connections: Peers = {};
 
       socket.on("connect", async () => {
         socket.emit(ACTION.JOIN_ROOM, roomInput);
@@ -70,7 +74,14 @@ export const App = (): JSX.Element => {
           socket.emit(ACTION.ROOM_PARTICIPANTS, roomInput, (data: RoomParticipants) => {
             data.participants.forEach((participant) => {
               const peerConnection = new RTCPeerConnection();
-
+              const sendChannel = peerConnection.createDataChannel("sendChannel");
+              sendChannel.onopen = () => {
+                console.log("opened");
+                setTimeout(() => {
+                  sendChannel.send("message");
+                }, 1000);
+              };
+              sendChannel.onclose = () => { console.log("closed"); };
               connections[participant.socketId] = peerConnection;
 
               peerConnection.onicecandidate = (event) => {
@@ -109,11 +120,16 @@ export const App = (): JSX.Element => {
             if (data.sdp.type === "answer") {
               console.log("sender on sdp answer: ", data);
               connections[data.socketId].setRemoteDescription(data.sdp);
+              console.log(connections[data.socketId].iceConnectionState);
             }
           });
           socket.on(ACTION.ICE, (data: SocketStreamIceData) => {
             console.log("sender on ice:", data);
-            connections[data.socketId].addIceCandidate(new RTCIceCandidate(data.ice));
+            const connection = connections[data.socketId];
+            // if (connection.iceConnectionState === "new") {
+            // return;
+            // }
+            connection.addIceCandidate(new RTCIceCandidate(data.ice));
           });
         } else if (type === "receiver") {
           socket.on(ACTION.SDP, (data: SocketStreamSdpData) => {
@@ -131,6 +147,17 @@ export const App = (): JSX.Element => {
                 socket.emit(ACTION.SDP, sdpData);
               });
 
+            peerConnection.ondatachannel = (event) => {
+              console.log("ondatachannel");
+              const receiveChannel = event.channel;
+              receiveChannel.onmessage = (e) => { console.log(e); };
+              receiveChannel.onopen = () => { console.log("on open"); };
+              receiveChannel.onclose = () => { console.log("on status change"); };
+            };
+            // peerConnection.ontrack = (event) => {
+            //   console.log("ontrack:", event.streams[0]);
+            // };
+
             peerConnection.onicecandidate = (event) => {
               console.log("receiver's peer connection on icecandidate:", event);
               if (event.candidate) {
@@ -145,7 +172,7 @@ export const App = (): JSX.Element => {
         }
       });
     }
-  }, [type, id]);
+  }, [stream, type, id]);
 
   return (
     <Wrapper>
