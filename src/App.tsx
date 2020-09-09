@@ -1,22 +1,36 @@
 import * as React from "react";
 import { useLocation } from "react-router-dom";
+import { Button } from "antd";
 import * as SocketIO from "socket.io-client";
 // @types/recordrtc is broken, thus we use this lib without typing
 import * as RecordRTCPromisesHandler from "recordrtc";
 
 import { Wrapper } from "./styled";
-import { getFileName, saveByteArray } from "./utils/download";
 import { peerConfig, createPeerConnection } from "./utils/peer";
 import { IDataChannelList, IPeers } from "./utils/interfaces";
+import { float32Concat } from "./utils/data";
+
 import { ACTION } from "../utils/constants";
 import { RoomInput, RoomParticipants, SocketStreamSdpData, SocketStreamIceData, SocketData } from "../utils/interfaces";
 
-const { useEffect, useState, useRef } = React;
+const { useEffect, useState } = React;
 const { StereoAudioRecorder } = RecordRTCPromisesHandler;
+const context = new AudioContext();
 
-/**
- * Global variables for convenience
- */
+let audioQueue;
+const output = context.createScriptProcessor(4096, 1, 1);
+output.onaudioprocess = (e) => {
+  if (audioQueue && audioQueue.length) {
+    const samplesToPlay = audioQueue.subarray(0, 4096);
+    audioQueue = audioQueue.subarray(4096, audioQueue.length);
+    console.log(samplesToPlay);
+    e.outputBuffer.getChannelData(0).set(samplesToPlay);
+  } else {
+    e.outputBuffer.getChannelData(0).set(new Float32Array(4096));
+  }
+};
+output.connect(context.destination);
+
 let read = 0;
 const dataChannelList: IDataChannelList = {};
 
@@ -25,8 +39,6 @@ export const App = (): JSX.Element => {
   const [type, id] = pathname.split("/").filter(Boolean);
 
   const [stream, setStream] = useState<MediaStream>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-
   const getAudioStream = async () => {
     setStream(await navigator.mediaDevices.getUserMedia({
       video: false,
@@ -64,7 +76,6 @@ export const App = (): JSX.Element => {
         },
       });
       recorder.startRecording();
-      audioRef.current.srcObject = stream;
     }
   }, [stream]);
 
@@ -156,15 +167,13 @@ export const App = (): JSX.Element => {
 
               const receiveChannel = event.channel;
               receiveChannel.binaryType = "arraybuffer";
-
-              let acceptedData = [];
-              let fileNumber = 0;
               receiveChannel.onmessage = (event) => {
-                acceptedData.push(new Float32Array(event.data));
-                if (acceptedData.length === 100) {
-                  console.log(acceptedData);
-                  saveByteArray(acceptedData, getFileName(++fileNumber));
-                  acceptedData = [];
+                const buffer = new Float32Array(event.data);
+
+                if (audioQueue) {
+                  audioQueue = float32Concat(audioQueue, buffer);
+                } else {
+                  audioQueue = buffer;
                 }
               };
 
@@ -204,9 +213,23 @@ export const App = (): JSX.Element => {
     }
   }, [type, id]);
 
+  const [playbackActive, setPlaybackActive] = useState(false);
+  const togglePlayback = () => {
+    if (playbackActive) {
+      context.suspend();
+    } else {
+      context.resume();
+    }
+    setPlaybackActive((prevValue) => !prevValue);
+  };
+
   return (
     <Wrapper>
-      <audio ref={audioRef} controls autoPlay playsInline muted />
+      {type === "receiver" && (
+        <Button onClick={togglePlayback}>
+          {playbackActive ? "Stop playback" : "Start playback"}
+        </Button>
+      )}
     </Wrapper>
   );
 };
