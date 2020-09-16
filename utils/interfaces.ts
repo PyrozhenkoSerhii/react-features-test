@@ -16,6 +16,7 @@ export interface SocketData {
 export type SocketRoomData = RoomInput & SocketData
 export interface SocketStreamSdpData extends SocketData{
     sdp
+    sampleRate?:number
 }
 export interface SocketStreamIceData extends SocketData{
     ice
